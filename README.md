@@ -4,7 +4,7 @@ For this project my goal is to create a Deep reinforcement learning Code that ca
 
 ## Base Idea
 
-I saw a code of a DQN agent in the repository of ROBOTIS. But as I want to create a better agent to control Robots I didn't see DQN for to much help in project because it only permits discrete actions. So my idea were to create a DDPG algorithm's agent based.
+I saw a code of a DQN agent in the repository of ROBOTIS. But as I want to create a better agent to control Robots I didn't see DQN for to much help in project because it only permits discrete actions. So my idea were to create a DDPG algorithm's agent based. A DDPG agent permits continous control for a robot. In my case I have as outputs: linear velocity (0 ~ 0.22m/s) and angular velocity (-1 ~ 1rad/s).
 
 - https://github.com/ROBOTIS-GIT/turtlebot3_machine_learning
 
