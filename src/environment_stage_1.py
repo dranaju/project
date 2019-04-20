@@ -58,8 +58,11 @@ class Env():
 
         goal_angle = math.atan2(self.goal_y - self.position.y, self.goal_x - self.position.x)
 
+        #print 'yaw', yaw
+        #print 'gA', goal_angle
 
         heading = goal_angle - yaw
+        #print 'heading', heading
         if heading > pi:
             heading -= 2 * pi
 
@@ -71,7 +74,7 @@ class Env():
     def getState(self, scan, past_action):
         scan_range = []
         heading = self.heading
-        min_range = 0.20
+        min_range = 0.16
         done = False
 
         for i in range(len(scan.ranges)):
@@ -102,25 +105,25 @@ class Env():
 
 
         distance_rate = (self.past_distance - current_distance) 
-        #if distance_rate > 0:
-        #    reward = 500.*distance_rate
+        if distance_rate > 0:
+            reward = 200.*distance_rate
         #if distance_rate == 0:
         #    reward = -10.
-        #if distance_rate <= 0:
-        #    reward = -15.
+        if distance_rate <= 0:
+            reward = -8.
         #angle_reward = math.pi - abs(heading)
         #print('d', 500*distance_rate)
-        reward = 500.*distance_rate #+ 3.*angle_reward
+        #reward = 500.*distance_rate #+ 3.*angle_reward
         self.past_distance = current_distance
 
         if done:
             rospy.loginfo("Collision!!")
-            reward = -75.
+            reward = -550.
             self.pub_cmd_vel.publish(Twist())
 
         if self.get_goalbox:
             rospy.loginfo("Goal!!")
-            reward = 100.
+            reward = 500.
             self.pub_cmd_vel.publish(Twist())
             self.goal_x, self.goal_y = self.respawn_goal.getPosition(True, delete=True)
             self.goal_distance = self.getGoalDistace()

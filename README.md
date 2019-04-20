@@ -20,7 +20,7 @@ You can find the packages the I used here:
 
 ```
 cd ~/catkin_ws/src/
-git clone link_git
+git clone {link_git}
 cd ~/catkin_ws && catkin_make
 ```
 
