@@ -370,7 +370,7 @@ if __name__ == '__main__':
         exploration_rate = (min_exploration_rate +
                 (max_exploration_rate - min_exploration_rate)* np.exp(-exploration_decay_rate*ep))
         gc.collect()
-        print('exp:', exploration_rate)
+        #print('exp:', exploration_rate)
         if ep%50 == 0:
             trainer.save_models(ep)
 

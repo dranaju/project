@@ -43,6 +43,15 @@ class Env():
         self.pause_proxy = rospy.ServiceProxy('gazebo/pause_physics', Empty)
         self.respawn_goal = Respawn()
         self.past_distance = 0.
+        #Keys CTRL + c will stop script
+        rospy.on_shutdown(self.shutdown)
+
+    def shutdown(self):
+        #you can stop turtlebot by publishing an empty Twist
+        #message
+        rospy.loginfo("Stopping TurtleBot")
+        self.pub_cmd_vel.publish(Twist())
+        rospy.sleep(1)
 
     def getGoalDistace(self):
         goal_distance = round(math.hypot(self.goal_x - self.position.x, self.goal_y - self.position.y), 2)
