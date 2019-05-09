@@ -254,6 +254,7 @@ def save_models(episode_count):
     torch.save(policy_net.state_dict(), dirPath + '/SAC_model/' + str(episode_count)+ '_policy_net.pth')
     torch.save(value_net.state_dict(), dirPath + '/SAC_model/' + str(episode_count)+ 'value_net.pth')
     torch.save(soft_q_net.state_dict(), dirPath + '/SAC_model/'+ str(episode_count)+ 'soft_q_net.pth')
+    torch.save(target_value_net.state_dict(), dirPath + '/SAC_model/' + str(episode_count)+ 'target_value_net.pth')
     print("====================================")
     print("Model has been saved...")
     print("====================================")
@@ -262,10 +263,11 @@ def load_models(episode):
     policy_net.load_state_dict(torch.load(dirPath + '/SAC_model/' + str(episode)+ '_policy_net.pth'))
     value_net.load_state_dict(torch.load(dirPath + '/SAC_model/' + str(episode)+ 'value_net.pth'))
     soft_q_net.load_state_dict(torch.load(dirPath + '/SAC_model/'+ str(episode)+ 'soft_q_net.pth'))
+    target_value_net.load_state_dict(torch.load(dirPath + '/SAC_model/' + str(episode)+ 'target_value_net.pth'))
     print('***Models load***')
 
 #****************************
-is_training = False
+is_training = True
 
 load_models(380)
 max_episodes  = 10001
