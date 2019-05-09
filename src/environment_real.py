@@ -20,6 +20,15 @@ class Env():
         self.angle = 0.
         self.distance = 0.
         self.past_distance = 0.
+        #Keys CTRL + c will stop script
+        rospy.on_shutdown(self.shutdown)
+
+    def shutdown(self):
+        #you can stop turtlebot by publishing an empty Twist
+        #message
+        rospy.loginfo("Stopping TurtleBot")
+        self.pub_cmd_vel.publish(Twist())
+        rospy.sleep(1)
 
     def getAngle(self, msg):
         self.angle = msg.data
@@ -97,7 +106,7 @@ class Env():
 
         if done:
             rospy.loginfo("Collision!!")
-            reward = -300.
+            reward = -550.
             self.pub_cmd_vel.publish(Twist())
 
         if self.get_goalbox:
