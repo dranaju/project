@@ -11,13 +11,14 @@ import sys
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from collections import deque
 from std_msgs.msg import Float32
-from environment_stage_1 import Env
+#from environment_stage_1 import Env
 import torch
 import torch.nn.functional as F
 import gc
 import torch.nn as nn
 import math
 from collections import deque
+from environment_real import Env
 
 #---Directory Path---#
 dirPath = os.path.dirname(os.path.realpath(__file__))
@@ -238,20 +239,20 @@ class Trainer:
         soft_update(self.target_critic, self.critic, TAU)
     
     def save_models(self, episode_count):
-        torch.save(self.target_actor.state_dict(), dirPath +'/Models/stage_4/'+str(episode_count)+ '_actor1.pt')
-        torch.save(self.target_critic.state_dict(), dirPath + '/Models/stage_4/'+str(episode_count)+ '_critic1.pt')
+        torch.save(self.target_actor.state_dict(), dirPath +'/Models/real1/'+str(episode_count)+ '_actor.pt')
+        torch.save(self.target_critic.state_dict(), dirPath + '/Models/real1/'+str(episode_count)+ '_critic.pt')
         print('****Models saved***')
         
     def load_models(self, episode):
-        self.actor.load_state_dict(torch.load(dirPath + '/Models/stage_4/'+str(episode)+ '_actor1.pt'))
-        self.critic.load_state_dict(torch.load(dirPath + '/Models/stage_4/'+str(episode)+ '_critic1.pt'))
+        self.actor.load_state_dict(torch.load(dirPath + '/Models/real1/'+str(episode)+ '_actor.pt'))
+        self.critic.load_state_dict(torch.load(dirPath + '/Models/real1/'+str(episode)+ '_critic.pt'))
         hard_update(self.target_actor, self.actor)
         hard_update(self.target_critic, self.critic)
         print('***Models load***')
 
 #---Run agent---#
 
-is_training = True
+is_training = False
 
 if is_training:
     exploration_rate = 1
@@ -265,18 +266,18 @@ else:
 exploration_decay_rate = 0.001
 
 MAX_EPISODES = 10001
-MAX_STEPS = 400
+MAX_STEPS = 500
 MAX_BUFFER = 100000
 rewards_all_episodes = []
 
 STATE_DIMENSION = 14
 ACTION_DIMENSION = 2
 ACTION_V_MAX = 0.22 # m/s
-ACTION_W_MAX = 0.5 # rad/s
+ACTION_W_MAX = 2. # rad/s
 
 if is_training:
-    var_v = ACTION_V_MAX
-    var_w = ACTION_W_MAX*2
+    var_v = ACTION_V_MAX*0.35
+    var_w = ACTION_W_MAX*2*0.35
 else:
     var_v = ACTION_V_MAX*0.10
     var_w = ACTION_W_MAX*0.10
@@ -286,7 +287,7 @@ print('Action Dimensions: ' + str(ACTION_DIMENSION))
 print('Action Max: ' + str(ACTION_V_MAX) + ' m/s and ' + str(ACTION_W_MAX) + ' rad/s')
 ram = MemoryBuffer(MAX_BUFFER)
 trainer = Trainer(STATE_DIMENSION, ACTION_DIMENSION, ACTION_V_MAX, ACTION_W_MAX, ram)
-trainer.load_models(1150)
+trainer.load_models(200)
 
 
 if __name__ == '__main__':
@@ -351,7 +352,7 @@ if __name__ == '__main__':
             #action = np.array([np.random.uniform(0.,0.15), np.random.uniform(-0.5, 0.5)])
             #print('r: ' + str(reward) + ' and done: ' + str(done))
 
-            if ram.len >= 0*MAX_STEPS and is_training:
+            if ram.len >= 2*MAX_STEPS and is_training:
                 var_v = max([var_v*0.99999, 0.30*ACTION_V_MAX])
                 var_w = max([var_w*0.99999, 0.30*ACTION_W_MAX])
                 trainer.optimizer()
@@ -370,8 +371,8 @@ if __name__ == '__main__':
         exploration_rate = (min_exploration_rate +
                 (max_exploration_rate - min_exploration_rate)* np.exp(-exploration_decay_rate*ep))
         gc.collect()
-        #print('exp:', exploration_rate)
-        if ep%50 == 0:
-            trainer.save_models(ep)
+        print('exp:', exploration_rate)
+        #if ep%50 == 0:
+        #    trainer.save_models(ep)
 
 print('Completed Training')
