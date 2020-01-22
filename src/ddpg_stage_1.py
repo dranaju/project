@@ -67,16 +67,16 @@ class Critic(nn.Module):
         self.state_dim = state_dim = state_dim
         self.action_dim = action_dim
         
-        self.fc1 = nn.Linear(state_dim, 256)
+        self.fc1 = nn.Linear(state_dim, 150)
         self.fc1.weight.data = fanin_init(self.fc1.weight.data.size())
         
-        self.fa1 = nn.Linear(action_dim, 256)
+        self.fa1 = nn.Linear(action_dim, 150)
         self.fa1.weight.data = fanin_init(self.fa1.weight.data.size())
         
-        self.fca1 = nn.Linear(512, 512)
+        self.fca1 = nn.Linear(300, 300)
         self.fca1.weight.data = fanin_init(self.fca1.weight.data.size())
         
-        self.fca2 = nn.Linear(512, 1)
+        self.fca2 = nn.Linear(300, 1)
         self.fca2.weight.data.uniform_(-EPS, EPS)
         
     def forward(self, state, action):
@@ -97,13 +97,13 @@ class Actor(nn.Module):
         self.action_limit_v = action_limit_v
         self.action_limit_w = action_limit_w
         
-        self.fa1 = nn.Linear(state_dim, 512)
+        self.fa1 = nn.Linear(state_dim, 300)
         self.fa1.weight.data = fanin_init(self.fa1.weight.data.size())
         
-        self.fa2 = nn.Linear(512, 512)
+        self.fa2 = nn.Linear(300, 300)
         self.fa2.weight.data = fanin_init(self.fa2.weight.data.size())
         
-        self.fa3 = nn.Linear(512, action_dim)
+        self.fa3 = nn.Linear(300, action_dim)
         self.fa3.weight.data.uniform_(-EPS,EPS)
         
     def forward(self, state):
@@ -238,13 +238,13 @@ class Trainer:
         soft_update(self.target_critic, self.critic, TAU)
     
     def save_models(self, episode_count):
-        torch.save(self.target_actor.state_dict(), dirPath +'/Models/real1/'+str(episode_count)+ '_actor.pt')
-        torch.save(self.target_critic.state_dict(), dirPath + '/Models/real1/'+str(episode_count)+ '_critic.pt')
+        torch.save(self.target_actor.state_dict(), dirPath +'/Models/stage_2/'+str(episode_count)+ '_actor.pt')
+        torch.save(self.target_critic.state_dict(), dirPath + '/Models/stage_2/'+str(episode_count)+ '_critic.pt')
         print('****Models saved***')
         
     def load_models(self, episode):
-        self.actor.load_state_dict(torch.load(dirPath + '/Models/real1/'+str(episode)+ '_actor.pt'))
-        self.critic.load_state_dict(torch.load(dirPath + '/Models/real1/'+str(episode)+ '_critic.pt'))
+        self.actor.load_state_dict(torch.load(dirPath + '/Models/stage_2/'+str(episode)+ '_actor.pt'))
+        self.critic.load_state_dict(torch.load(dirPath + '/Models/stage_2/'+str(episode)+ '_critic.pt'))
         hard_update(self.target_actor, self.actor)
         hard_update(self.target_critic, self.critic)
         print('***Models load***')
@@ -286,7 +286,7 @@ print('Action Dimensions: ' + str(ACTION_DIMENSION))
 print('Action Max: ' + str(ACTION_V_MAX) + ' m/s and ' + str(ACTION_W_MAX) + ' rad/s')
 ram = MemoryBuffer(MAX_BUFFER)
 trainer = Trainer(STATE_DIMENSION, ACTION_DIMENSION, ACTION_V_MAX, ACTION_W_MAX, ram)
-trainer.load_models(200)
+trainer.load_models(160)
 
 
 if __name__ == '__main__':
@@ -314,7 +314,7 @@ if __name__ == '__main__':
             #action[1] = np.clip(np.random.normal(action[1], var_w), -ACTION_W_MAX, ACTION_W_MAX)
             #print('actionD', action)
 
-            if is_training:
+            if is_training and (ep)% 2 == 0 or not ram.len >= 2*MAX_STEPS:
                 #if ep%2 == 0:
                 #    action = trainer.get_exploitation_action(state)
                 #    #print('aa', action)
@@ -326,6 +326,9 @@ if __name__ == '__main__':
                 #action[0] = np.clip(action[0], 0., ACTION_V_MAX)
                 #action[1] = np.clip(action[1], -ACTION_W_MAX, ACTION_W_MAX)
             #print('af', action) 
+            else:
+                print('\n\n Explotation \n\n')
+                action = trainer.get_exploitation_action(state)
 
             #exploration_rate_threshold = random.uniform(0., 1.)
             #if exploration_rate_threshold > exploration_rate:
@@ -345,13 +348,14 @@ if __name__ == '__main__':
 
             rewards_current_episode += reward
             next_state = np.float32(next_state)
-            ram.add(state, action, reward, next_state)
+            if ep%2 == 0:
+                ram.add(state, action, reward, next_state)
             state = next_state
             
             #action = np.array([np.random.uniform(0.,0.15), np.random.uniform(-0.5, 0.5)])
             #print('r: ' + str(reward) + ' and done: ' + str(done))
 
-            if ram.len >= 2*MAX_STEPS and is_training:
+            if ram.len >= 2*MAX_STEPS and is_training and (ep)% 2 == 0:
                 var_v = max([var_v*0.99999, 0.10*ACTION_V_MAX])
                 var_w = max([var_w*0.99999, 0.10*ACTION_W_MAX])
                 trainer.optimizer()
@@ -362,16 +366,20 @@ if __name__ == '__main__':
                 print('reward per ep: ' + str(rewards_current_episode))
                 print('explore_v: ' + str(var_v) + ' and explore_w: ' + str(var_w))
                 rewards_all_episodes.append(rewards_current_episode)
-                result = rewards_current_episode
-                pub_result.publish(result)
+                if (ep)% 2 == 0:
+                    pass
+                else:
+                    if ram.len >= 2*MAX_STEPS:
+                        result = rewards_current_episode
+                        pub_result.publish(result)
                 m, s = divmod(int(time.time() - start_time), 60)
                 h, m = divmod(m, 60)
                 break
         exploration_rate = (min_exploration_rate +
                 (max_exploration_rate - min_exploration_rate)* np.exp(-exploration_decay_rate*ep))
         gc.collect()
-        #print('exp:', exploration_rate)
-        if ep%50 == 0:
+        print('exp:', exploration_rate)
+        if ep%20 == 0:
             trainer.save_models(ep)
 
 print('Completed Training')

@@ -54,18 +54,22 @@ class ValueNetwork(nn.Module):
         
         self.linear1 = nn.Linear(state_dim, hidden_dim)
         self.linear2 = nn.Linear(hidden_dim, hidden_dim)
+        self.linear2_3 = nn.Linear(hidden_dim, hidden_dim)
         self.linear3 = nn.Linear(hidden_dim, 1)
         
         self.linear1.weight.data.uniform_(-init_w, init_w)
         self.linear1.bias.data.uniform_(-init_w, init_w)
         self.linear2.weight.data.uniform_(-init_w, init_w)
         self.linear2.bias.data.uniform_(-init_w, init_w)
+        self.linear2_3.weight.data.uniform_(-init_w, init_w)
+        self.linear2_3.bias.data.uniform_(-init_w, init_w)
         self.linear3.weight.data.uniform_(-init_w, init_w)
         self.linear3.bias.data.uniform_(-init_w, init_w)
         
     def forward(self, state):
         x = F.relu(self.linear1(state))
         x = F.relu(self.linear2(x))
+        x = F.relu(self.linear2_3(x))
         x = self.linear3(x)
         return x
         
@@ -76,12 +80,15 @@ class SoftQNetwork(nn.Module):
         
         self.linear1 = nn.Linear(num_inputs + num_actions, hidden_size)
         self.linear2 = nn.Linear(hidden_size, hidden_size)
+        self.linear2_3 = nn.Linear(hidden_size, hidden_size)
         self.linear3 = nn.Linear(hidden_size, 1)
         
         self.linear1.weight.data.uniform_(-init_w, init_w)
         self.linear1.bias.data.uniform_(-init_w, init_w)
         self.linear2.weight.data.uniform_(-init_w, init_w)
         self.linear2.bias.data.uniform_(-init_w, init_w)
+        self.linear2_3.weight.data.uniform_(-init_w, init_w)
+        self.linear2_3.bias.data.uniform_(-init_w, init_w)
         self.linear3.weight.data.uniform_(-init_w, init_w)
         self.linear3.bias.data.uniform_(-init_w, init_w)
         
@@ -89,6 +96,7 @@ class SoftQNetwork(nn.Module):
         x = torch.cat([state, action], 1)
         x = F.relu(self.linear1(x))
         x = F.relu(self.linear2(x))
+        x = F.relu(self.linear2_3(x))
         x = self.linear3(x)
         return x
         
@@ -215,7 +223,7 @@ def soft_q_update(batch_size,
 
 action_dim = 2
 state_dim  = 14
-hidden_dim = 512
+hidden_dim = 300
 ACTION_V_MIN = 0.0 # m/s
 ACTION_W_MIN = -2. # rad/s
 ACTION_V_MAX = 0.22 # m/s
@@ -251,25 +259,25 @@ print('Action Dimensions: ' + str(action_dim))
 print('Action Max: ' + str(ACTION_V_MAX) + ' m/s and ' + str(ACTION_W_MAX) + ' rad/s')
 #-----------------------------------------------------
 def save_models(episode_count):
-    torch.save(policy_net.state_dict(), dirPath + '/SAC_model/' + str(episode_count)+ '_policy_net.pth')
-    torch.save(value_net.state_dict(), dirPath + '/SAC_model/' + str(episode_count)+ 'value_net.pth')
-    torch.save(soft_q_net.state_dict(), dirPath + '/SAC_model/'+ str(episode_count)+ 'soft_q_net.pth')
-    torch.save(target_value_net.state_dict(), dirPath + '/SAC_model/' + str(episode_count)+ 'target_value_net.pth')
+    torch.save(policy_net.state_dict(), dirPath + '/SAC_model/stage_1/' + str(episode_count)+ '_policy_net.pth')
+    torch.save(value_net.state_dict(), dirPath + '/SAC_model/stage_1/' + str(episode_count)+ 'value_net.pth')
+    torch.save(soft_q_net.state_dict(), dirPath + '/SAC_model/stage_1/'+ str(episode_count)+ 'soft_q_net.pth')
+    torch.save(target_value_net.state_dict(), dirPath + '/SAC_model/stage_1/' + str(episode_count)+ 'target_value_net.pth')
     print("====================================")
     print("Model has been saved...")
     print("====================================")
 
 def load_models(episode):
-    policy_net.load_state_dict(torch.load(dirPath + '/SAC_model/' + str(episode)+ '_policy_net.pth'))
-    value_net.load_state_dict(torch.load(dirPath + '/SAC_model/' + str(episode)+ 'value_net.pth'))
-    soft_q_net.load_state_dict(torch.load(dirPath + '/SAC_model/'+ str(episode)+ 'soft_q_net.pth'))
-    target_value_net.load_state_dict(torch.load(dirPath + '/SAC_model/' + str(episode)+ 'target_value_net.pth'))
+    policy_net.load_state_dict(torch.load(dirPath + '/SAC_model/stage_1/' + str(episode)+ '_policy_net.pth'))
+    value_net.load_state_dict(torch.load(dirPath + '/SAC_model/stage_1/' + str(episode)+ 'value_net.pth'))
+    soft_q_net.load_state_dict(torch.load(dirPath + '/SAC_model/stage_1/'+ str(episode)+ 'soft_q_net.pth'))
+    target_value_net.load_state_dict(torch.load(dirPath + '/SAC_model/stage_1/' + str(episode)+ 'target_value_net.pth'))
     print('***Models load***')
 
 #****************************
 is_training = True
 
-load_models(380)
+load_models(40)
 max_episodes  = 10001
 max_steps   = 500
 rewards     = []
@@ -321,8 +329,9 @@ if __name__ == '__main__':
         
         print('reward per ep: ' + str(rewards_current_episode))
         rewards.append(rewards_current_episode)
-        result = rewards_current_episode
-        pub_result.publish(result)
+        if len(replay_buffer) > 2*batch_size:
+            result = rewards_current_episode
+            pub_result.publish(result)
         gc.collect()
         if ep%20 == 0:
             save_models(ep)
