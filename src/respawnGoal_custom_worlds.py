@@ -128,19 +128,30 @@ class Respawn():
 
         if self.stage == 2:
             while position_check:
-                goal_x_list = [0.228647, 0.922508, 1.024927, 0.959415, 0.664351, 0.204226, 0.221995, 0.246574, 0.500827, 0.966236, 1.090174, 1.464998, 1.764149, 1.962141, 1.810928, 2.604408, 2.659335, 2.539837, 1.990282]
-                goal_y_list = [-0.273918, -0.260043, -0.903187, -1.309805, -0.978576, -1.287591, -1.765687, -2.113419, -2.661957, -2.294950, -2.733147, -2.079898, -2.230047, -1.481993, -0.554729, -0.429419, -1.574327, -2.553553, -1.937678]
+                goal_x_list = [1.053979, 0.725346, 1.759492, 2.477302, 2.665976, 2.576926, 2.175901, 1.882009, 2.547499, 1.838564, 2.637267, 1.535967, 0.443954, 0.335799, 0.263102]
+                goal_y_list = [-1.122977, -0.332471, -0.291238, -0.330033, -0.734655, -1.328935, -1.411599, -1.803747, -2.157146, -2.260181, -2.668954, -2.546023, -2.570976, -2.100776, -1.021737]
 
-                self.index = random.randrange(0, 19)
-                print(self.index, self.last_index)
-                if self.last_index == self.index:
-                    position_check = True
-                else:
-                    self.last_index = self.index
+                if not running:
+                    self.index = 0
                     position_check = False
+                    self.goal_position.position.x = goal_x_list[self.index]
+                    self.goal_position.position.y = goal_y_list[self.index]
+                elif self.index < 15:
+                    self.index += 1
+                    position_check = False
+                    self.goal_position.position.x = goal_x_list[self.index]
+                    self.goal_position.position.y = goal_y_list[self.index]
+                elif self.index >= 15:
+                    aux_index = random.randrange(0, 15)
+                    print(self.index, aux_index)
+                    if self.last_index == aux_index:
+                        position_check = True
+                    else:
+                        self.last_index = aux_index
+                        position_check = False
+                        self.goal_position.position.x = goal_x_list[aux_index]
+                        self.goal_position.position.y = goal_y_list[aux_index]
 
-                self.goal_position.position.x = goal_x_list[self.index]
-                self.goal_position.position.y = goal_y_list[self.index]
 
         if self.stage == 3:
             while position_check:

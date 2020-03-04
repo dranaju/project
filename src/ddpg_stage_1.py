@@ -19,7 +19,7 @@ import torch.nn as nn
 import math
 from collections import deque
 
-world = 'world_obst'
+world = 'stage_1'
 
 #---Directory Path---#
 dirPath = os.path.dirname(os.path.realpath(__file__))
