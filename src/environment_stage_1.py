@@ -26,7 +26,13 @@ from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import Odometry
 from std_srvs.srv import Empty
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
-from respawnGoal import Respawn
+world = True
+if world:
+    from respawnGoal_custom_worlds import Respawn
+else:
+    from respawnGoal import Respawn
+import copy
+target_not_movable = False
 
 class Env():
     def __init__(self):
@@ -43,6 +49,7 @@ class Env():
         self.pause_proxy = rospy.ServiceProxy('gazebo/pause_physics', Empty)
         self.respawn_goal = Respawn()
         self.past_distance = 0.
+        self.stopped = 0
         #Keys CTRL + c will stop script
         rospy.on_shutdown(self.shutdown)
 
@@ -60,6 +67,7 @@ class Env():
         return goal_distance
 
     def getOdometry(self, odom):
+        self.past_position = copy.deepcopy(self.position)
         self.position = odom.pose.pose.position
         orientation = odom.pose.pose.orientation
         orientation_list = [orientation.x, orientation.y, orientation.z, orientation.w]
@@ -83,7 +91,7 @@ class Env():
     def getState(self, scan, past_action):
         scan_range = []
         heading = self.heading
-        min_range = 0.16
+        min_range = 0.135
         done = False
 
         for i in range(len(scan.ranges)):
@@ -116,14 +124,32 @@ class Env():
         distance_rate = (self.past_distance - current_distance) 
         if distance_rate > 0:
             reward = 200.*distance_rate
-        #if distance_rate == 0:
-        #    reward = -10.
+            # reward = 1.
+
+        # if distance_rate == 0:
+        #     reward = 0.
+
         if distance_rate <= 0:
             reward = -8.
+            # reward = 0.
+
         #angle_reward = math.pi - abs(heading)
         #print('d', 500*distance_rate)
         #reward = 500.*distance_rate #+ 3.*angle_reward
         self.past_distance = current_distance
+
+        a, b, c, d = float('{0:.3f}'.format(self.position.x)), float('{0:.3f}'.format(self.past_position.x)), float('{0:.3f}'.format(self.position.y)), float('{0:.3f}'.format(self.past_position.y))
+        if a == b and c == d:
+            # rospy.loginfo('\n<<<<<Stopped>>>>>\n')
+            # print('\n' + str(a) + ' ' + str(b) + ' ' + str(c) + ' ' + str(d) + '\n')
+            self.stopped += 1
+            if self.stopped == 20:
+                rospy.loginfo('Robot is in the same 10 times in a row')
+                self.stopped = 0
+                done = True
+        else:
+            # rospy.loginfo('\n>>>>> not stopped>>>>>\n')
+            self.stopped = 0
 
         if done:
             rospy.loginfo("Collision!!")
@@ -134,11 +160,13 @@ class Env():
             rospy.loginfo("Goal!!")
             reward = 500.
             self.pub_cmd_vel.publish(Twist())
-            self.goal_x, self.goal_y = self.respawn_goal.getPosition(True, delete=True)
+            if world and target_not_movable:
+                self.reset()
+            self.goal_x, self.goal_y = self.respawn_goal.getPosition(True, delete=True, running=True)
             self.goal_distance = self.getGoalDistace()
             self.get_goalbox = False
 
-        return reward
+        return reward, done
 
     def step(self, action, past_action):
         linear_vel = action[0]
@@ -157,11 +185,12 @@ class Env():
                 pass
 
         state, done = self.getState(data, past_action)
-        reward = self.setReward(state, done)
+        reward, done = self.setReward(state, done)
 
         return np.asarray(state), reward, done
 
     def reset(self):
+        #print('aqui2_____________---')
         rospy.wait_for_service('gazebo/reset_simulation')
         try:
             self.reset_proxy()
@@ -182,6 +211,6 @@ class Env():
             self.goal_x, self.goal_y = self.respawn_goal.getPosition(True, delete=True)
 
         self.goal_distance = self.getGoalDistace()
-        state, done = self.getState(data, [0.,0.])
+        state, _ = self.getState(data, [0.,0.])
 
         return np.asarray(state)

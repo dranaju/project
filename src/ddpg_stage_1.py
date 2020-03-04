@@ -19,6 +19,8 @@ import torch.nn as nn
 import math
 from collections import deque
 
+world = 'world_obst'
+
 #---Directory Path---#
 dirPath = os.path.dirname(os.path.realpath(__file__))
 #---Functions to make network updates---#
@@ -49,7 +51,7 @@ class ActionNoise:
         dx = self.theta*(self.mu - self.X)
         dx = dx + self.sigma*np.random.randn(len(self.X))
         self.X = self.X + dx
-        print('aqu2i' + str(self.X))
+        # print('aqu2i' + str(self.X))
         return self.X
 
 #---Critic--#
@@ -67,16 +69,16 @@ class Critic(nn.Module):
         self.state_dim = state_dim = state_dim
         self.action_dim = action_dim
         
-        self.fc1 = nn.Linear(state_dim, 150)
+        self.fc1 = nn.Linear(state_dim, 250)
         self.fc1.weight.data = fanin_init(self.fc1.weight.data.size())
         
-        self.fa1 = nn.Linear(action_dim, 150)
+        self.fa1 = nn.Linear(action_dim, 250)
         self.fa1.weight.data = fanin_init(self.fa1.weight.data.size())
         
-        self.fca1 = nn.Linear(300, 300)
+        self.fca1 = nn.Linear(500, 500)
         self.fca1.weight.data = fanin_init(self.fca1.weight.data.size())
         
-        self.fca2 = nn.Linear(300, 1)
+        self.fca2 = nn.Linear(500, 1)
         self.fca2.weight.data.uniform_(-EPS, EPS)
         
     def forward(self, state, action):
@@ -97,13 +99,13 @@ class Actor(nn.Module):
         self.action_limit_v = action_limit_v
         self.action_limit_w = action_limit_w
         
-        self.fa1 = nn.Linear(state_dim, 300)
+        self.fa1 = nn.Linear(state_dim, 500)
         self.fa1.weight.data = fanin_init(self.fa1.weight.data.size())
         
-        self.fa2 = nn.Linear(300, 300)
+        self.fa2 = nn.Linear(500, 500)
         self.fa2.weight.data = fanin_init(self.fa2.weight.data.size())
         
-        self.fa3 = nn.Linear(300, action_dim)
+        self.fa3 = nn.Linear(500, action_dim)
         self.fa3.weight.data.uniform_(-EPS,EPS)
         
     def forward(self, state):
@@ -238,13 +240,13 @@ class Trainer:
         soft_update(self.target_critic, self.critic, TAU)
     
     def save_models(self, episode_count):
-        torch.save(self.target_actor.state_dict(), dirPath +'/Models/stage_2/'+str(episode_count)+ '_actor.pt')
-        torch.save(self.target_critic.state_dict(), dirPath + '/Models/stage_2/'+str(episode_count)+ '_critic.pt')
+        torch.save(self.target_actor.state_dict(), dirPath +'/Models/' + world + '/' + str(episode_count)+ '_actor.pt')
+        torch.save(self.target_critic.state_dict(), dirPath + '/Models/' + world + '/'+str(episode_count)+ '_critic.pt')
         print('****Models saved***')
         
     def load_models(self, episode):
-        self.actor.load_state_dict(torch.load(dirPath + '/Models/stage_2/'+str(episode)+ '_actor.pt'))
-        self.critic.load_state_dict(torch.load(dirPath + '/Models/stage_2/'+str(episode)+ '_critic.pt'))
+        self.actor.load_state_dict(torch.load(dirPath + '/Models/' + world + '/'+str(episode)+ '_actor.pt'))
+        self.critic.load_state_dict(torch.load(dirPath + '/Models/' + world + '/'+str(episode)+ '_critic.pt'))
         hard_update(self.target_actor, self.actor)
         hard_update(self.target_critic, self.critic)
         print('***Models load***')
@@ -266,7 +268,7 @@ exploration_decay_rate = 0.001
 
 MAX_EPISODES = 10001
 MAX_STEPS = 500
-MAX_BUFFER = 100000
+MAX_BUFFER = 50000
 rewards_all_episodes = []
 
 STATE_DIMENSION = 14
@@ -275,8 +277,8 @@ ACTION_V_MAX = 0.22 # m/s
 ACTION_W_MAX = 2 # rad/s
 
 if is_training:
-    var_v = ACTION_V_MAX*0.20
-    var_w = ACTION_W_MAX*2*0.20
+    var_v = ACTION_V_MAX*.95
+    var_w = ACTION_W_MAX*2*.95
 else:
     var_v = ACTION_V_MAX*0.10
     var_w = ACTION_W_MAX*0.10
@@ -286,7 +288,7 @@ print('Action Dimensions: ' + str(ACTION_DIMENSION))
 print('Action Max: ' + str(ACTION_V_MAX) + ' m/s and ' + str(ACTION_W_MAX) + ' rad/s')
 ram = MemoryBuffer(MAX_BUFFER)
 trainer = Trainer(STATE_DIMENSION, ACTION_DIMENSION, ACTION_V_MAX, ACTION_W_MAX, ram)
-trainer.load_models(160)
+# trainer.load_models(220)
 
 
 if __name__ == '__main__':
@@ -327,7 +329,7 @@ if __name__ == '__main__':
                 #action[1] = np.clip(action[1], -ACTION_W_MAX, ACTION_W_MAX)
             #print('af', action) 
             else:
-                print('\n\n Explotation \n\n')
+                # print('\n\n Explotation \n\n')
                 action = trainer.get_exploitation_action(state)
 
             #exploration_rate_threshold = random.uniform(0., 1.)
@@ -343,21 +345,27 @@ if __name__ == '__main__':
             #print('action',action)
             #print('ap',past_action)
             next_state, reward, done = env.step(action, past_action)
-            print('action', action,'r',reward)
+            # print('action', action,'r',reward)
             past_action = action
 
             rewards_current_episode += reward
             next_state = np.float32(next_state)
-            if ep%2 == 0:
-                ram.add(state, action, reward, next_state)
+            if ep%2 == 0 or not ram.len >= 2*MAX_STEPS:
+                if reward == 500:
+                    print('***\n-------- Maximum Reward ----------\n****')
+                    for i in range(3):
+                        ram.add(state, action, reward, next_state)
+                else:
+                    ram.add(state, action, reward, next_state)
             state = next_state
             
             #action = np.array([np.random.uniform(0.,0.15), np.random.uniform(-0.5, 0.5)])
-            #print('r: ' + str(reward) + ' and done: ' + str(done))
+            # print('r: ' + str(reward) + ' and done: ' + str(done))
 
+            # if ram.len >= 2*MAX_STEPS and is_training:
             if ram.len >= 2*MAX_STEPS and is_training and (ep)% 2 == 0:
-                var_v = max([var_v*0.99999, 0.10*ACTION_V_MAX])
-                var_w = max([var_w*0.99999, 0.10*ACTION_W_MAX])
+                var_v = max([var_v*0.99999, 0.025*ACTION_V_MAX])
+                var_w = max([var_w*0.99999, 0.025*ACTION_W_MAX])
                 trainer.optimizer()
             #if is_training:
             #    trainer.optimizer()

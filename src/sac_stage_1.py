@@ -21,6 +21,8 @@ import torch.nn as nn
 import math
 from collections import deque
 
+world = 'world_obst'
+
 #---Directory Path---#
 dirPath = os.path.dirname(os.path.realpath(__file__))
 
@@ -148,7 +150,7 @@ class PolicyNetwork(nn.Module):
         return action, log_prob, z, mean, log_std
         
     
-    def get_action(self, state):
+    def get_action(self, state, exploitation=False):
         state = torch.FloatTensor(state).unsqueeze(0)
         mean, log_std = self.forward(state)
         std = log_std.exp()
@@ -156,6 +158,8 @@ class PolicyNetwork(nn.Module):
         normal = Normal(mean, std)
         z      = normal.sample()
         action = torch.tanh(z)
+        if exploitation:
+            action = mean
         #action = z.detach().numpy()
         
         action  = action.detach().numpy()
@@ -251,7 +255,7 @@ soft_q_optimizer = optim.Adam(soft_q_net.parameters(), lr=soft_q_lr)
 policy_optimizer = optim.Adam(policy_net.parameters(), lr=policy_lr)
 
 
-replay_buffer_size = 100000
+replay_buffer_size = 50000
 replay_buffer = ReplayBuffer(replay_buffer_size)
 
 print('State Dimensions: ' + str(state_dim))
@@ -259,25 +263,25 @@ print('Action Dimensions: ' + str(action_dim))
 print('Action Max: ' + str(ACTION_V_MAX) + ' m/s and ' + str(ACTION_W_MAX) + ' rad/s')
 #-----------------------------------------------------
 def save_models(episode_count):
-    torch.save(policy_net.state_dict(), dirPath + '/SAC_model/stage_1/' + str(episode_count)+ '_policy_net.pth')
-    torch.save(value_net.state_dict(), dirPath + '/SAC_model/stage_1/' + str(episode_count)+ 'value_net.pth')
-    torch.save(soft_q_net.state_dict(), dirPath + '/SAC_model/stage_1/'+ str(episode_count)+ 'soft_q_net.pth')
-    torch.save(target_value_net.state_dict(), dirPath + '/SAC_model/stage_1/' + str(episode_count)+ 'target_value_net.pth')
+    torch.save(policy_net.state_dict(), dirPath + '/SAC_model/' + world + '/'+str(episode_count)+ '_policy_net.pth')
+    torch.save(value_net.state_dict(), dirPath + '/SAC_model/' + world + '/'+str(episode_count)+ 'value_net.pth')
+    torch.save(soft_q_net.state_dict(), dirPath + '/SAC_model/' + world + '/' + str(episode_count)+ 'soft_q_net.pth')
+    torch.save(target_value_net.state_dict(), dirPath + '/SAC_model/' + world + '/' + str(episode_count)+ 'target_value_net.pth')
     print("====================================")
     print("Model has been saved...")
     print("====================================")
 
 def load_models(episode):
-    policy_net.load_state_dict(torch.load(dirPath + '/SAC_model/stage_1/' + str(episode)+ '_policy_net.pth'))
-    value_net.load_state_dict(torch.load(dirPath + '/SAC_model/stage_1/' + str(episode)+ 'value_net.pth'))
-    soft_q_net.load_state_dict(torch.load(dirPath + '/SAC_model/stage_1/'+ str(episode)+ 'soft_q_net.pth'))
-    target_value_net.load_state_dict(torch.load(dirPath + '/SAC_model/stage_1/' + str(episode)+ 'target_value_net.pth'))
+    policy_net.load_state_dict(torch.load(dirPath + '/SAC_model/' + world + '/'+str(episode)+ '_policy_net.pth'))
+    value_net.load_state_dict(torch.load(dirPath + '/SAC_model/' + world + '/'+str(episode)+ 'value_net.pth'))
+    soft_q_net.load_state_dict(torch.load(dirPath + '/SAC_model/' + world + '/'+str(episode)+ 'soft_q_net.pth'))
+    target_value_net.load_state_dict(torch.load(dirPath + '/SAC_model/' + world + '/'+str(episode)+ 'target_value_net.pth'))
     print('***Models load***')
 
 #****************************
-is_training = True
+is_training = False
 
-load_models(40)
+# load_models(160)
 max_episodes  = 10001
 max_steps   = 500
 rewards     = []
@@ -314,13 +318,13 @@ if __name__ == '__main__':
             unnorm_action = np.array([action_unnormalized(action[0], ACTION_V_MAX, ACTION_V_MIN), action_unnormalized(action[1], ACTION_W_MAX, ACTION_W_MIN)])
 
             next_state, reward, done = env.step(unnorm_action, past_action)
-            print('action', unnorm_action,'r',reward)
+            # print('action', unnorm_action,'r',reward)
             past_action = action
 
             rewards_current_episode += reward
             next_state = np.float32(next_state)
             replay_buffer.push(state, action, reward, next_state, done)
-            if len(replay_buffer) > 2*batch_size and is_training:
+            if len(replay_buffer) > 8*batch_size and is_training:
                 soft_q_update(batch_size)
             state = next_state
 
@@ -329,7 +333,7 @@ if __name__ == '__main__':
         
         print('reward per ep: ' + str(rewards_current_episode))
         rewards.append(rewards_current_episode)
-        if len(replay_buffer) > 2*batch_size:
+        if len(replay_buffer) > 8*batch_size:
             result = rewards_current_episode
             pub_result.publish(result)
         gc.collect()
