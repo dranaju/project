@@ -20,8 +20,8 @@ import gc
 import torch.nn as nn
 import math
 from collections import deque
+import copy
 
-world = 'world_obst'
 
 #---Directory Path---#
 dirPath = os.path.dirname(os.path.realpath(__file__))
@@ -59,19 +59,19 @@ class ValueNetwork(nn.Module):
         self.linear2_3 = nn.Linear(hidden_dim, hidden_dim)
         self.linear3 = nn.Linear(hidden_dim, 1)
         
-        self.linear1.weight.data.uniform_(-init_w, init_w)
-        self.linear1.bias.data.uniform_(-init_w, init_w)
-        self.linear2.weight.data.uniform_(-init_w, init_w)
-        self.linear2.bias.data.uniform_(-init_w, init_w)
-        self.linear2_3.weight.data.uniform_(-init_w, init_w)
-        self.linear2_3.bias.data.uniform_(-init_w, init_w)
-        self.linear3.weight.data.uniform_(-init_w, init_w)
-        self.linear3.bias.data.uniform_(-init_w, init_w)
+        # self.linear1.weight.data.uniform_(-init_w, init_w)
+        # self.linear1.bias.data.uniform_(-init_w, init_w)
+        # self.linear2.weight.data.uniform_(-init_w, init_w)
+        # self.linear2.bias.data.uniform_(-init_w, init_w)
+        # self.linear2_3.weight.data.uniform_(-init_w, init_w)
+        # self.linear2_3.bias.data.uniform_(-init_w, init_w)
+        # self.linear3.weight.data.uniform_(-init_w, init_w)
+        # self.linear3.bias.data.uniform_(-init_w, init_w)
         
     def forward(self, state):
-        x = F.relu(self.linear1(state))
-        x = F.relu(self.linear2(x))
-        x = F.relu(self.linear2_3(x))
+        x = mish(self.linear1(state))
+        x = mish(self.linear2(x))
+        x = mish(self.linear2_3(x))
         x = self.linear3(x)
         return x
         
@@ -85,20 +85,20 @@ class SoftQNetwork(nn.Module):
         self.linear2_3 = nn.Linear(hidden_size, hidden_size)
         self.linear3 = nn.Linear(hidden_size, 1)
         
-        self.linear1.weight.data.uniform_(-init_w, init_w)
-        self.linear1.bias.data.uniform_(-init_w, init_w)
-        self.linear2.weight.data.uniform_(-init_w, init_w)
-        self.linear2.bias.data.uniform_(-init_w, init_w)
-        self.linear2_3.weight.data.uniform_(-init_w, init_w)
-        self.linear2_3.bias.data.uniform_(-init_w, init_w)
-        self.linear3.weight.data.uniform_(-init_w, init_w)
-        self.linear3.bias.data.uniform_(-init_w, init_w)
+        # self.linear1.weight.data.uniform_(-init_w, init_w)
+        # self.linear1.bias.data.uniform_(-init_w, init_w)
+        # self.linear2.weight.data.uniform_(-init_w, init_w)
+        # self.linear2.bias.data.uniform_(-init_w, init_w)
+        # self.linear2_3.weight.data.uniform_(-init_w, init_w)
+        # self.linear2_3.bias.data.uniform_(-init_w, init_w)
+        # self.linear3.weight.data.uniform_(-init_w, init_w)
+        # self.linear3.bias.data.uniform_(-init_w, init_w)
         
     def forward(self, state, action):
         x = torch.cat([state, action], 1)
-        x = F.relu(self.linear1(x))
-        x = F.relu(self.linear2(x))
-        x = F.relu(self.linear2_3(x))
+        x = mish(self.linear1(x))
+        x = mish(self.linear2(x))
+        x = mish(self.linear2_3(x))
         x = self.linear3(x)
         return x
         
@@ -111,24 +111,24 @@ class PolicyNetwork(nn.Module):
         self.log_std_max = log_std_max
         
         self.linear1 = nn.Linear(num_inputs, hidden_size)
-        self.linear1.weight.data.uniform_(-init_w, init_w)
-        self.linear1.bias.data.uniform_(-init_w, init_w)
+        # self.linear1.weight.data.uniform_(-init_w, init_w)
+        # self.linear1.bias.data.uniform_(-init_w, init_w)
         
         self.linear2 = nn.Linear(hidden_size, hidden_size)
-        self.linear2.weight.data.uniform_(-init_w, init_w)
-        self.linear2.bias.data.uniform_(-init_w, init_w)
+        # self.linear2.weight.data.uniform_(-init_w, init_w)
+        # self.linear2.bias.data.uniform_(-init_w, init_w)
         
         self.mean_linear = nn.Linear(hidden_size, num_actions)
-        self.mean_linear.weight.data.uniform_(-init_w, init_w)
-        self.mean_linear.bias.data.uniform_(-init_w, init_w)
+        # self.mean_linear.weight.data.uniform_(-init_w, init_w)
+        # self.mean_linear.bias.data.uniform_(-init_w, init_w)
         
         self.log_std_linear = nn.Linear(hidden_size, num_actions)
-        self.log_std_linear.weight.data.uniform_(-init_w, init_w)
-        self.log_std_linear.bias.data.uniform_(-init_w, init_w)
+        # self.log_std_linear.weight.data.uniform_(-init_w, init_w)
+        # self.log_std_linear.bias.data.uniform_(-init_w, init_w)
         
     def forward(self, state):
-        x = F.relu(self.linear1(state))
-        x = F.relu(self.linear2(x))
+        x = mish(self.linear1(state))
+        x = mish(self.linear2(x))
         
         mean    = self.mean_linear(x)
         log_std = self.log_std_linear(x)
@@ -223,6 +223,20 @@ def soft_q_update(batch_size,
             target_param.data * (1.0 - soft_tau) + param.data * soft_tau
         )
 
+
+#---Mish Activation Function---#
+def mish(x):
+    '''
+        Mish: A Self Regularized Non-Monotonic Neural Activation Function
+        https://arxiv.org/abs/1908.08681v1
+        implemented for PyTorch / FastAI by lessw2020
+        https://github.com/lessw2020/mish
+        param:
+            x: output of a layer of a neural network
+        return: mish activation function
+    '''
+    return x*(torch.tanh(F.softplus(x)))
+
 #----------------------------------------------------------
 
 action_dim = 2
@@ -232,6 +246,7 @@ ACTION_V_MIN = 0.0 # m/s
 ACTION_W_MIN = -2. # rad/s
 ACTION_V_MAX = 0.22 # m/s
 ACTION_W_MAX = 2. # rad/s
+world = 'world_obst'
 
 value_net        = ValueNetwork(state_dim, hidden_dim)
 target_value_net = ValueNetwork(state_dim, hidden_dim)
@@ -279,9 +294,9 @@ def load_models(episode):
     print('***Models load***')
 
 #****************************
-is_training = False
+is_training = True
 
-# load_models(160)
+load_models(60)
 max_episodes  = 10001
 max_steps   = 500
 rewards     = []
@@ -300,21 +315,33 @@ if __name__ == '__main__':
     pub_result = rospy.Publisher('result', Float32, queue_size=5)
     result = Float32()
     env = Env()
-
-    start_time = time.time()
+    before_training = 4
     past_action = np.array([0.,0.])
 
     for ep in range(max_episodes):
         done = False
         state = env.reset()
-        print('Episode: ' + str(ep))
+        
+        if is_training and ep%2 == 0 and len(replay_buffer) > before_training*batch_size:
+            print('Episode: ' + str(ep) + ' training')
+        else:
+            if len(replay_buffer) > before_training*batch_size:
+                print('Episode: ' + str(ep) + ' evaluating')
+            else:
+                print('Episode: ' + str(ep) + ' adding to memory')
 
-        rewards_current_episode = 0
+        rewards_current_episode = 0.
 
         for step in range(max_steps):
             state = np.float32(state)
             
-            action = policy_net.get_action(state)
+            if is_training and ep%2 == 0 and len(replay_buffer) > before_training*batch_size:
+                action = policy_net.get_action(state)
+            else:
+                action = policy_net.get_action(state, exploitation=True)
+
+            if not is_training:
+                action = policy_net.get_action(state, exploitation=True)
             unnorm_action = np.array([action_unnormalized(action[0], ACTION_V_MAX, ACTION_V_MIN), action_unnormalized(action[1], ACTION_W_MAX, ACTION_W_MIN)])
 
             next_state, reward, done = env.step(unnorm_action, past_action)
@@ -323,19 +350,27 @@ if __name__ == '__main__':
 
             rewards_current_episode += reward
             next_state = np.float32(next_state)
-            replay_buffer.push(state, action, reward, next_state, done)
-            if len(replay_buffer) > 8*batch_size and is_training:
+            if ep%2 == 0 or not len(replay_buffer) > before_training*batch_size:
+                if reward == 100.:
+                    print('***\n-------- Maximum Reward ----------\n****')
+                    for _ in range(3):
+                        replay_buffer.push(state, action, reward, next_state, done)
+                else:
+                    replay_buffer.push(state, action, reward, next_state, done)
+            
+            if len(replay_buffer) > before_training*batch_size and is_training and ep% 2 == 0:
                 soft_q_update(batch_size)
-            state = next_state
+            state = copy.deepcopy(next_state)
 
             if done:
                 break
         
         print('reward per ep: ' + str(rewards_current_episode))
-        rewards.append(rewards_current_episode)
-        if len(replay_buffer) > 8*batch_size:
-            result = rewards_current_episode
-            pub_result.publish(result)
-        gc.collect()
+        print('reward average per ep: ' + str(round(rewards_current_episode/step, 2)) + ' and break step: ' + str(step))
+        if not ep%2 == 0:
+            if len(replay_buffer) > before_training*batch_size:
+                result = round(rewards_current_episode/step, 2)
+                pub_result.publish(result)
+        
         if ep%20 == 0:
             save_models(ep)

@@ -282,8 +282,8 @@ ACTION_W_MAX = 2 # rad/s
 world = 'world_obst'
 
 if is_training:
-    var_v = ACTION_V_MAX*.80
-    var_w = ACTION_W_MAX*2*.80
+    var_v = ACTION_V_MAX*.1
+    var_w = ACTION_W_MAX*2*.1/2
 else:
     var_v = ACTION_V_MAX*0.10
     var_w = ACTION_W_MAX*0.10
@@ -293,7 +293,7 @@ print('Action Dimensions: ' + str(ACTION_DIMENSION))
 print('Action Max: ' + str(ACTION_V_MAX) + ' m/s and ' + str(ACTION_W_MAX) + ' rad/s')
 ram = MemoryBuffer(MAX_BUFFER)
 trainer = Trainer(STATE_DIMENSION, ACTION_DIMENSION, ACTION_V_MAX, ACTION_W_MAX, ram)
-trainer.load_models(180)
+trainer.load_models(1560)
 
 
 if __name__ == '__main__':
@@ -308,10 +308,10 @@ if __name__ == '__main__':
     for ep in range(MAX_EPISODES):
         done = False
         state = env.reset()
-        if is_training and ep%2 == 0 and ram.len >= 1*MAX_STEPS:
+        if is_training and ep%2 == 0 and ram.len >= before_training*MAX_STEPS:
             print('Episode: ' + str(ep) + ' training')
         else:
-            if ram.len >= 2*MAX_STEPS:
+            if ram.len >= before_training*MAX_STEPS:
                 print('Episode: ' + str(ep) + ' evaluating')
             else:
                 print('Episode: ' + str(ep) + ' adding to memory')
@@ -347,8 +347,8 @@ if __name__ == '__main__':
             
 
             if ram.len >= before_training*MAX_STEPS and is_training and ep% 2 == 0:
-                var_v = max([var_v*0.99999, 0.01*ACTION_V_MAX])
-                var_w = max([var_w*0.99999, 0.01*ACTION_W_MAX])
+                var_v = max([var_v*0.99995, 0.1*ACTION_V_MAX])
+                var_w = max([var_w*0.99995, 0.1*ACTION_W_MAX])
                 trainer.optimizer()
 
             if done or step == MAX_STEPS-1:
