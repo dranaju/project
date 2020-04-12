@@ -159,7 +159,7 @@ class PolicyNetwork(nn.Module):
         z      = normal.sample()
         action = torch.tanh(z)
         if exploitation:
-            action = mean
+            action = torch.tanh(mean)
         #action = z.detach().numpy()
         
         action  = action.detach().numpy()
@@ -296,7 +296,7 @@ def load_models(episode):
 #****************************
 is_training = True
 
-# load_models(60)   
+load_models(240)   
 hard_update(target_value_net, value_net)
 max_episodes  = 10001
 max_steps   = 500
