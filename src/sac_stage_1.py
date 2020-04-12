@@ -59,19 +59,19 @@ class ValueNetwork(nn.Module):
         self.linear2_3 = nn.Linear(hidden_dim, hidden_dim)
         self.linear3 = nn.Linear(hidden_dim, 1)
         
-        # self.linear1.weight.data.uniform_(-init_w, init_w)
-        # self.linear1.bias.data.uniform_(-init_w, init_w)
-        # self.linear2.weight.data.uniform_(-init_w, init_w)
-        # self.linear2.bias.data.uniform_(-init_w, init_w)
-        # self.linear2_3.weight.data.uniform_(-init_w, init_w)
-        # self.linear2_3.bias.data.uniform_(-init_w, init_w)
-        # self.linear3.weight.data.uniform_(-init_w, init_w)
-        # self.linear3.bias.data.uniform_(-init_w, init_w)
+        self.linear1.weight.data.uniform_(-init_w, init_w)
+        self.linear1.bias.data.uniform_(-init_w, init_w)
+        self.linear2.weight.data.uniform_(-init_w, init_w)
+        self.linear2.bias.data.uniform_(-init_w, init_w)
+        self.linear2_3.weight.data.uniform_(-init_w, init_w)
+        self.linear2_3.bias.data.uniform_(-init_w, init_w)
+        self.linear3.weight.data.uniform_(-init_w, init_w)
+        self.linear3.bias.data.uniform_(-init_w, init_w)
         
     def forward(self, state):
-        x = mish(self.linear1(state))
-        x = mish(self.linear2(x))
-        x = mish(self.linear2_3(x))
+        x = torch.relu(self.linear1(state))
+        x = torch.relu(self.linear2(x))
+        x = torch.relu(self.linear2_3(x))
         x = self.linear3(x)
         return x
         
@@ -85,20 +85,20 @@ class SoftQNetwork(nn.Module):
         self.linear2_3 = nn.Linear(hidden_size, hidden_size)
         self.linear3 = nn.Linear(hidden_size, 1)
         
-        # self.linear1.weight.data.uniform_(-init_w, init_w)
-        # self.linear1.bias.data.uniform_(-init_w, init_w)
-        # self.linear2.weight.data.uniform_(-init_w, init_w)
-        # self.linear2.bias.data.uniform_(-init_w, init_w)
-        # self.linear2_3.weight.data.uniform_(-init_w, init_w)
-        # self.linear2_3.bias.data.uniform_(-init_w, init_w)
-        # self.linear3.weight.data.uniform_(-init_w, init_w)
-        # self.linear3.bias.data.uniform_(-init_w, init_w)
+        self.linear1.weight.data.uniform_(-init_w, init_w)
+        self.linear1.bias.data.uniform_(-init_w, init_w)
+        self.linear2.weight.data.uniform_(-init_w, init_w)
+        self.linear2.bias.data.uniform_(-init_w, init_w)
+        self.linear2_3.weight.data.uniform_(-init_w, init_w)
+        self.linear2_3.bias.data.uniform_(-init_w, init_w)
+        self.linear3.weight.data.uniform_(-init_w, init_w)
+        self.linear3.bias.data.uniform_(-init_w, init_w)
         
     def forward(self, state, action):
         x = torch.cat([state, action], 1)
-        x = mish(self.linear1(x))
-        x = mish(self.linear2(x))
-        x = mish(self.linear2_3(x))
+        x = torch.relu(self.linear1(x))
+        x = torch.relu(self.linear2(x))
+        x = torch.relu(self.linear2_3(x))
         x = self.linear3(x)
         return x
         
@@ -111,24 +111,24 @@ class PolicyNetwork(nn.Module):
         self.log_std_max = log_std_max
         
         self.linear1 = nn.Linear(num_inputs, hidden_size)
-        # self.linear1.weight.data.uniform_(-init_w, init_w)
-        # self.linear1.bias.data.uniform_(-init_w, init_w)
+        self.linear1.weight.data.uniform_(-init_w, init_w)
+        self.linear1.bias.data.uniform_(-init_w, init_w)
         
         self.linear2 = nn.Linear(hidden_size, hidden_size)
-        # self.linear2.weight.data.uniform_(-init_w, init_w)
-        # self.linear2.bias.data.uniform_(-init_w, init_w)
+        self.linear2.weight.data.uniform_(-init_w, init_w)
+        self.linear2.bias.data.uniform_(-init_w, init_w)
         
         self.mean_linear = nn.Linear(hidden_size, num_actions)
-        # self.mean_linear.weight.data.uniform_(-init_w, init_w)
-        # self.mean_linear.bias.data.uniform_(-init_w, init_w)
+        self.mean_linear.weight.data.uniform_(-init_w, init_w)
+        self.mean_linear.bias.data.uniform_(-init_w, init_w)
         
         self.log_std_linear = nn.Linear(hidden_size, num_actions)
-        # self.log_std_linear.weight.data.uniform_(-init_w, init_w)
-        # self.log_std_linear.bias.data.uniform_(-init_w, init_w)
+        self.log_std_linear.weight.data.uniform_(-init_w, init_w)
+        self.log_std_linear.bias.data.uniform_(-init_w, init_w)
         
     def forward(self, state):
-        x = mish(self.linear1(state))
-        x = mish(self.linear2(x))
+        x = torch.relu(self.linear1(state))
+        x = torch.relu(self.linear2(x))
         
         mean    = self.mean_linear(x)
         log_std = self.log_std_linear(x)
@@ -235,13 +235,13 @@ def mish(x):
             x: output of a layer of a neural network
         return: mish activation function
     '''
-    return x*(torch.tanh(F.softplus(x)))
+    return torch.clamp(x*(torch.tanh(F.softplus(x))),max=6)
 
 #----------------------------------------------------------
 
 action_dim = 2
 state_dim  = 14
-hidden_dim = 300
+hidden_dim = 500
 ACTION_V_MIN = 0.0 # m/s
 ACTION_W_MIN = -2. # rad/s
 ACTION_V_MAX = 0.22 # m/s
@@ -254,9 +254,9 @@ target_value_net = ValueNetwork(state_dim, hidden_dim)
 soft_q_net = SoftQNetwork(state_dim, action_dim, hidden_dim)
 policy_net = PolicyNetwork(state_dim, action_dim, hidden_dim)
 
-for target_param, param in zip(target_value_net.parameters(), value_net.parameters()):
-    target_param.data.copy_(param.data)
-    
+def hard_update(target,source):
+    for target_param, param in zip(target.parameters(), source.parameters()):
+        target_param.data.copy_(param.data)
 
 value_criterion  = nn.MSELoss()
 soft_q_criterion = nn.MSELoss()
@@ -296,11 +296,14 @@ def load_models(episode):
 #****************************
 is_training = True
 
-load_models(60)
+# load_models(60)   
+hard_update(target_value_net, value_net)
 max_episodes  = 10001
 max_steps   = 500
 rewards     = []
 batch_size  = 128
+
+
 
 #----------------------------------------
 def action_unnormalized(action, high, low):
@@ -334,7 +337,7 @@ if __name__ == '__main__':
 
         for step in range(max_steps):
             state = np.float32(state)
-            
+            # print('state___', state)
             if is_training and ep%2 == 0 and len(replay_buffer) > before_training*batch_size:
                 action = policy_net.get_action(state)
             else:
@@ -346,7 +349,7 @@ if __name__ == '__main__':
 
             next_state, reward, done = env.step(unnorm_action, past_action)
             # print('action', unnorm_action,'r',reward)
-            past_action = action
+            past_action = copy.deepcopy(action)
 
             rewards_current_episode += reward
             next_state = np.float32(next_state)
@@ -366,10 +369,10 @@ if __name__ == '__main__':
                 break
         
         print('reward per ep: ' + str(rewards_current_episode))
-        print('reward average per ep: ' + str(round(rewards_current_episode/step, 2)) + ' and break step: ' + str(step))
+        print('reward average per ep: ' + str(rewards_current_episode) + ' and break step: ' + str(step))
         if not ep%2 == 0:
             if len(replay_buffer) > before_training*batch_size:
-                result = round(rewards_current_episode/step, 2)
+                result = rewards_current_episode
                 pub_result.publish(result)
         
         if ep%20 == 0:
