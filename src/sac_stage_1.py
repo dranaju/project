@@ -69,9 +69,9 @@ class ValueNetwork(nn.Module):
         self.linear3.bias.data.uniform_(-init_w, init_w)
         
     def forward(self, state):
-        x = torch.relu(self.linear1(state))
-        x = torch.relu(self.linear2(x))
-        x = torch.relu(self.linear2_3(x))
+        x = mish(self.linear1(state))
+        x = mish(self.linear2(x))
+        x = mish(self.linear2_3(x))
         x = self.linear3(x)
         return x
         
@@ -96,9 +96,9 @@ class SoftQNetwork(nn.Module):
         
     def forward(self, state, action):
         x = torch.cat([state, action], 1)
-        x = torch.relu(self.linear1(x))
-        x = torch.relu(self.linear2(x))
-        x = torch.relu(self.linear2_3(x))
+        x = mish(self.linear1(x))
+        x = mish(self.linear2(x))
+        x = mish(self.linear2_3(x))
         x = self.linear3(x)
         return x
         
@@ -127,8 +127,8 @@ class PolicyNetwork(nn.Module):
         self.log_std_linear.bias.data.uniform_(-init_w, init_w)
         
     def forward(self, state):
-        x = torch.relu(self.linear1(state))
-        x = torch.relu(self.linear2(x))
+        x = mish(self.linear1(state))
+        x = mish(self.linear2(x))
         
         mean    = self.mean_linear(x)
         log_std = self.log_std_linear(x)
@@ -296,12 +296,12 @@ def load_models(episode):
 #****************************
 is_training = True
 
-load_models(240)   
+load_models(120)   
 hard_update(target_value_net, value_net)
 max_episodes  = 10001
 max_steps   = 500
 rewards     = []
-batch_size  = 128
+batch_size  = 256
 
 
 
@@ -354,7 +354,7 @@ if __name__ == '__main__':
             rewards_current_episode += reward
             next_state = np.float32(next_state)
             if ep%2 == 0 or not len(replay_buffer) > before_training*batch_size:
-                if reward == 100.:
+                if reward == 500.:
                     print('***\n-------- Maximum Reward ----------\n****')
                     for _ in range(3):
                         replay_buffer.push(state, action, reward, next_state, done)

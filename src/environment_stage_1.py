@@ -35,7 +35,7 @@ import copy
 target_not_movable = False
 
 class Env():
-    def __init__(self):
+    def __init__(self, action_dim=2):
         self.goal_x = 0
         self.goal_y = 0
         self.heading = 0
@@ -50,6 +50,7 @@ class Env():
         self.respawn_goal = Respawn()
         self.past_distance = 0.
         self.stopped = 0
+        self.action_dim = action_dim
         #Keys CTRL + c will stop script
         rospy.on_shutdown(self.shutdown)
 
@@ -111,7 +112,7 @@ class Env():
 
         current_distance = round(math.hypot(self.goal_x - self.position.x, self.goal_y - self.position.y),2)
         # current_distance = self.getGoalDistace()
-        if current_distance < 0.1:
+        if current_distance < 0.15:
             self.get_goalbox = True
 
         return scan_range + [heading, current_distance], done
@@ -124,15 +125,15 @@ class Env():
 
         distance_rate = (self.past_distance - current_distance) 
         if distance_rate > 0:
-            # reward = 200.*distance_rate
-            reward = 0.
+            reward = 200.*distance_rate
+            # reward = 0.
 
         # if distance_rate == 0:
         #     reward = 0.
 
         if distance_rate <= 0:
-            # reward = -8.
-            reward = 0.
+            reward = -8.
+            # reward = 0.
 
         #angle_reward = math.pi - abs(heading)
         #print('d', 500*distance_rate)
@@ -154,14 +155,14 @@ class Env():
 
         if done:
             rospy.loginfo("Collision!!")
-            # reward = -550.
-            reward = -10.
+            reward = -550.
+            # reward = -10.
             self.pub_cmd_vel.publish(Twist())
 
         if self.get_goalbox:
             rospy.loginfo("Goal!!")
-            # reward = 500.
-            reward = 100.
+            reward = 500.
+            # reward = 100.
             self.pub_cmd_vel.publish(Twist())
             if world:
                 self.goal_x, self.goal_y = self.respawn_goal.getPosition(True, delete=True, running=True)
@@ -217,6 +218,6 @@ class Env():
             self.goal_x, self.goal_y = self.respawn_goal.getPosition(True, delete=True)
 
         self.goal_distance = self.getGoalDistace()
-        state, _ = self.getState(data, [0.,0.])
+        state, _ = self.getState(data, [0]*self.action_dim)
 
         return np.asarray(state)
