@@ -36,7 +36,7 @@ def hard_update(target,source):
 #---Ornstein-Uhlenbeck Noise for action---#
 
 class OUNoise(object):
-    def __init__(self, action_space, mu=0.0, theta=0.15, max_sigma=0.3, min_sigma=0.2, decay_period=10000000):
+    def __init__(self, action_space, mu=0.0, theta=0.15, max_sigma=0.9, min_sigma=0.2, decay_period=1000000):
         self.mu           = mu
         self.theta        = theta
         self.sigma        = max_sigma
@@ -335,7 +335,8 @@ if __name__ == '__main__':
         for step in range(MAX_STEPS):
             state = np.float32(state)
 
-            if is_training and not ep%10 == 0 and ram.len >= before_training*MAX_STEPS:
+            # if is_training and not ep%10 == 0 and ram.len >= before_training*MAX_STEPS:
+            if is_training and not ep%10 == 0:
                 action = trainer.get_exploration_action(state)
                 # action[0] = np.clip(
                 #     np.random.normal(action[0], var_v), 0., ACTION_V_MAX)
@@ -344,8 +345,8 @@ if __name__ == '__main__':
                 # action[1] = np.clip(
                 #     np.random.normal(action[1], var_w), -ACTION_W_MAX, ACTION_W_MAX)
                 N = copy.deepcopy(noise.get_noise(t=step))
-                N[0] = round(N[0],4)*ACTION_V_MAX/2
-                N[1] = round(N[1],4)*ACTION_W_MAX
+                N[0] = N[0]*ACTION_V_MAX/2
+                N[1] = N[1]*ACTION_W_MAX
                 action[0] = np.clip(action[0] + N[0], 0., ACTION_V_MAX)
                 action[1] = np.clip(action[1] + N[1], -ACTION_W_MAX, ACTION_W_MAX)
             else:
