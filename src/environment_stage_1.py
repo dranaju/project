@@ -26,7 +26,7 @@ from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import Odometry
 from std_srvs.srv import Empty
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
-world = False
+world = True
 if world:
     from respawnGoal_custom_worlds import Respawn
 else:
@@ -92,7 +92,7 @@ class Env():
     def getState(self, scan, past_action):
         scan_range = []
         heading = self.heading
-        min_range = 0.135
+        min_range = 0.15
         done = False
 
         for i in range(len(scan.ranges)):
@@ -125,44 +125,44 @@ class Env():
 
         distance_rate = (self.past_distance - current_distance) 
         if distance_rate > 0:
-            reward = 200.*distance_rate
-            # reward = 0.
+            # reward = 200.*distance_rate
+            reward = 0.
 
         # if distance_rate == 0:
         #     reward = 0.
 
         if distance_rate <= 0:
-            reward = -8.
-            # reward = 0.
+            # reward = -8.
+            reward = 0.
 
         #angle_reward = math.pi - abs(heading)
         #print('d', 500*distance_rate)
         #reward = 500.*distance_rate #+ 3.*angle_reward
         self.past_distance = current_distance
 
-        # a, b, c, d = float('{0:.3f}'.format(self.position.x)), float('{0:.3f}'.format(self.past_position.x)), float('{0:.3f}'.format(self.position.y)), float('{0:.3f}'.format(self.past_position.y))
-        # if a == b and c == d:
-        #     # rospy.loginfo('\n<<<<<Stopped>>>>>\n')
-        #     # print('\n' + str(a) + ' ' + str(b) + ' ' + str(c) + ' ' + str(d) + '\n')
-        #     self.stopped += 1
-        #     if self.stopped == 20:
-        #         rospy.loginfo('Robot is in the same 10 times in a row')
-        #         self.stopped = 0
-        #         done = True
-        # else:
-        #     # rospy.loginfo('\n>>>>> not stopped>>>>>\n')
-        #     self.stopped = 0
+        a, b, c, d = float('{0:.3f}'.format(self.position.x)), float('{0:.3f}'.format(self.past_position.x)), float('{0:.3f}'.format(self.position.y)), float('{0:.3f}'.format(self.past_position.y))
+        if a == b and c == d:
+            # rospy.loginfo('\n<<<<<Stopped>>>>>\n')
+            # print('\n' + str(a) + ' ' + str(b) + ' ' + str(c) + ' ' + str(d) + '\n')
+            self.stopped += 1
+            if self.stopped == 20:
+                rospy.loginfo('Robot is in the same 20 times in a row')
+                self.stopped = 0
+                done = True
+        else:
+            # rospy.loginfo('\n>>>>> not stopped>>>>>\n')
+            self.stopped = 0
 
         if done:
             rospy.loginfo("Collision!!")
-            reward = -550.
-            # reward = -10.
+            # reward = -500.
+            reward = -100.
             self.pub_cmd_vel.publish(Twist())
 
         if self.get_goalbox:
             rospy.loginfo("Goal!!")
-            reward = 500.
-            # reward = 100.
+            # reward = 500.
+            reward = 100.
             self.pub_cmd_vel.publish(Twist())
             if world:
                 self.goal_x, self.goal_y = self.respawn_goal.getPosition(True, delete=True, running=True)

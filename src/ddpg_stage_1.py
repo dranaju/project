@@ -36,7 +36,7 @@ def hard_update(target,source):
 #---Ornstein-Uhlenbeck Noise for action---#
 
 class OUNoise(object):
-    def __init__(self, action_space, mu=0.0, theta=0.15, max_sigma=0.9, min_sigma=0.2, decay_period=1000000):
+    def __init__(self, action_space, mu=0.0, theta=0.15, max_sigma=0.99, min_sigma=0.01, decay_period= 600000):
         self.mu           = mu
         self.theta        = theta
         self.sigma        = max_sigma
@@ -57,6 +57,7 @@ class OUNoise(object):
     
     def get_noise(self, t=0): 
         ou_state = self.evolve_state()
+        # print('noise' + str(ou_state))
         decaying = float(float(t)/ self.decay_period)
         self.sigma = max(self.sigma - (self.max_sigma - self.min_sigma) * min(1.0, decaying), self.min_sigma)
         return ou_state
@@ -76,17 +77,25 @@ class Critic(nn.Module):
         self.state_dim = state_dim = state_dim
         self.action_dim = action_dim
         
-        self.fc1 = nn.Linear(state_dim, 250)
-        self.fc1.weight.data = fanin_init(self.fc1.weight.data.size())
+        self.fc1 = nn.Linear(state_dim, 125)
+        nn.init.xavier_uniform_(self.fc1.weight)
+        self.fc1.bias.data.fill_(0.01)
+        # self.fc1.weight.data = fanin_init(self.fc1.weight.data.size())
         
-        self.fa1 = nn.Linear(action_dim, 250)
-        self.fa1.weight.data = fanin_init(self.fa1.weight.data.size())
+        self.fa1 = nn.Linear(action_dim, 125)
+        nn.init.xavier_uniform_(self.fa1.weight)
+        self.fa1.bias.data.fill_(0.01)
+        # self.fa1.weight.data = fanin_init(self.fa1.weight.data.size())
         
-        self.fca1 = nn.Linear(500, 500)
-        self.fca1.weight.data = fanin_init(self.fca1.weight.data.size())
+        self.fca1 = nn.Linear(250, 250)
+        nn.init.xavier_uniform_(self.fca1.weight)
+        self.fca1.bias.data.fill_(0.01)
+        # self.fca1.weight.data = fanin_init(self.fca1.weight.data.size())
         
-        self.fca2 = nn.Linear(500, 1)
-        self.fca2.weight.data.uniform_(-EPS, EPS)
+        self.fca2 = nn.Linear(250, 1)
+        nn.init.xavier_uniform_(self.fca2.weight)
+        self.fca2.bias.data.fill_(0.01)
+        # self.fca2.weight.data.uniform_(-EPS, EPS)
         
     def forward(self, state, action):
         xs = torch.relu(self.fc1(state))
@@ -106,14 +115,20 @@ class Actor(nn.Module):
         self.action_limit_v = action_limit_v
         self.action_limit_w = action_limit_w
         
-        self.fa1 = nn.Linear(state_dim, 500)
-        self.fa1.weight.data = fanin_init(self.fa1.weight.data.size())
+        self.fa1 = nn.Linear(state_dim, 250)
+        nn.init.xavier_uniform_(self.fa1.weight)
+        self.fa1.bias.data.fill_(0.01)
+        # self.fa1.weight.data = fanin_init(self.fa1.weight.data.size())
         
-        self.fa2 = nn.Linear(500, 500)
-        self.fa2.weight.data = fanin_init(self.fa2.weight.data.size())
+        self.fa2 = nn.Linear(250, 250)
+        nn.init.xavier_uniform_(self.fa2.weight)
+        self.fa2.bias.data.fill_(0.01)
+        # self.fa2.weight.data = fanin_init(self.fa2.weight.data.size())
         
-        self.fa3 = nn.Linear(500, action_dim)
-        self.fa3.weight.data.uniform_(-EPS,EPS)
+        self.fa3 = nn.Linear(250, action_dim)
+        nn.init.xavier_uniform_(self.fa3.weight)
+        self.fa3.bias.data.fill_(0.01)
+        # self.fa3.weight.data.uniform_(-EPS,EPS)
         
     def forward(self, state):
         x = torch.relu(self.fa1(state))
@@ -144,14 +159,15 @@ class MemoryBuffer:
         a_array = np.float32([array[1] for array in batch])
         r_array = np.float32([array[2] for array in batch])
         new_s_array = np.float32([array[3] for array in batch])
+        done_array = np.float32([array[4] for array in batch])
         
-        return s_array, a_array, r_array, new_s_array
+        return s_array, a_array, r_array, new_s_array, done_array
     
     def len(self):
         return self.len
     
-    def add(self, s, a, r, new_s):
-        transition = (s, a, r, new_s)
+    def add(self, s, a, r, new_s, done):
+        transition = (s, a, r, new_s, done)
         self.len += 1 
         if self.len > self.maxSize:
             self.len = self.maxSize
@@ -208,19 +224,20 @@ class Trainer:
         return new_action
     
     def optimizer(self):
-        s_sample, a_sample, r_sample, new_s_sample = ram.sample(BATCH_SIZE)
+        s_sample, a_sample, r_sample, new_s_sample, done_sample = ram.sample(BATCH_SIZE)
         
         s_sample = torch.from_numpy(s_sample)
         a_sample = torch.from_numpy(a_sample)
         r_sample = torch.from_numpy(r_sample)
         new_s_sample = torch.from_numpy(new_s_sample)
+        done_sample = torch.from_numpy(done_sample)
         
         #-------------- optimize critic
         
         a_target = self.target_actor.forward(new_s_sample).detach()
         next_value = torch.squeeze(self.target_critic.forward(new_s_sample, a_target).detach())
         # y_exp = r _ gamma*Q'(s', P'(s'))
-        y_expected = r_sample + GAMMA*next_value
+        y_expected = r_sample + (1 - done_sample)*GAMMA*next_value
         # y_pred = Q(s,a)
         y_predicted = torch.squeeze(self.critic.forward(s_sample, a_sample))
         #-------Publisher of Vs------
@@ -279,14 +296,14 @@ exploration_decay_rate = 0.001
 
 MAX_EPISODES = 10001
 MAX_STEPS = 500
-MAX_BUFFER = 50000
+MAX_BUFFER = 200000
 rewards_all_episodes = []
 
 STATE_DIMENSION = 14
 ACTION_DIMENSION = 2
 ACTION_V_MAX = 0.22 # m/s
 ACTION_W_MAX = 2. # rad/s
-world = 'stage_2'
+world = 'stage_1'
 
 if is_training:
     var_v = ACTION_V_MAX*.5
@@ -300,8 +317,8 @@ print('Action Dimensions: ' + str(ACTION_DIMENSION))
 print('Action Max: ' + str(ACTION_V_MAX) + ' m/s and ' + str(ACTION_W_MAX) + ' rad/s')
 ram = MemoryBuffer(MAX_BUFFER)
 trainer = Trainer(STATE_DIMENSION, ACTION_DIMENSION, ACTION_V_MAX, ACTION_W_MAX, ram)
-noise = OUNoise(ACTION_DIMENSION)
-# trainer.load_models(140)
+noise = OUNoise(ACTION_DIMENSION, min_sigma=0.2, decay_period=9000000)
+trainer.load_models(0)
 
 
 if __name__ == '__main__':
@@ -309,7 +326,7 @@ if __name__ == '__main__':
     pub_result = rospy.Publisher('result', Float32, queue_size=5)
     result = Float32()
     env = Env(action_dim=ACTION_DIMENSION)
-    before_training = 1
+    before_training = 4
 
     past_action = np.zeros(ACTION_DIMENSION)
 
@@ -356,17 +373,21 @@ if __name__ == '__main__':
                 action = trainer.get_exploitation_action(state)
             next_state, reward, done = env.step(action, past_action)
             # print('action', action,'r',reward)
-            past_action = action
-
+            past_action = copy.deepcopy(action)
+            
             rewards_current_episode += reward
             next_state = np.float32(next_state)
             if not ep%10 == 0 or not ram.len >= before_training*MAX_STEPS:
                 if reward == 500.:
                     print('***\n-------- Maximum Reward ----------\n****')
                     for _ in range(3):
-                        ram.add(state, action, reward, next_state)
+                        ram.add(state, action, reward, next_state, done)
+                # elif reward == -100.:
+                #     print('***\n-------- Collision ----------\n****')
+                #     for _ in range():
+                #         ram.add(state, action, reward, next_state, done)
                 else:
-                    ram.add(state, action, reward, next_state)
+                    ram.add(state, action, reward, next_state, done)
             state = copy.deepcopy(next_state)
             
 
