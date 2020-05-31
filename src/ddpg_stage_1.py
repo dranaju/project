@@ -303,7 +303,7 @@ STATE_DIMENSION = 14
 ACTION_DIMENSION = 2
 ACTION_V_MAX = 0.22 # m/s
 ACTION_W_MAX = 2. # rad/s
-world = 'stage_1'
+world = 'world_u'
 
 if is_training:
     var_v = ACTION_V_MAX*.5
@@ -317,8 +317,8 @@ print('Action Dimensions: ' + str(ACTION_DIMENSION))
 print('Action Max: ' + str(ACTION_V_MAX) + ' m/s and ' + str(ACTION_W_MAX) + ' rad/s')
 ram = MemoryBuffer(MAX_BUFFER)
 trainer = Trainer(STATE_DIMENSION, ACTION_DIMENSION, ACTION_V_MAX, ACTION_W_MAX, ram)
-noise = OUNoise(ACTION_DIMENSION, min_sigma=0.2, decay_period=9000000)
-trainer.load_models(0)
+noise = OUNoise(ACTION_DIMENSION, min_sigma=0.1, decay_period=9000000)
+# trainer.load_models(0)
 
 
 if __name__ == '__main__':

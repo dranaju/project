@@ -156,7 +156,7 @@ class Env():
         if done:
             rospy.loginfo("Collision!!")
             # reward = -500.
-            reward = -100.
+            reward = -10.
             self.pub_cmd_vel.publish(Twist())
 
         if self.get_goalbox:

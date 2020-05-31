@@ -136,12 +136,12 @@ class Respawn():
                     position_check = False
                     self.goal_position.position.x = goal_x_list[self.index]
                     self.goal_position.position.y = goal_y_list[self.index]
-                elif self.index < 15:
+                elif self.index < 14:
                     self.index += 1
                     position_check = False
                     self.goal_position.position.x = goal_x_list[self.index]
                     self.goal_position.position.y = goal_y_list[self.index]
-                elif self.index >= 15:
+                elif self.index >= 14:
                     aux_index = random.randrange(0, 15)
                     print(self.index, aux_index)
                     if self.last_index == aux_index:
