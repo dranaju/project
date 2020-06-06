@@ -295,7 +295,7 @@ is_training = True
 exploration_decay_rate = 0.001
 
 MAX_EPISODES = 10001
-MAX_STEPS = 500
+MAX_STEPS = 1000
 MAX_BUFFER = 200000
 rewards_all_episodes = []
 
@@ -378,7 +378,7 @@ if __name__ == '__main__':
             rewards_current_episode += reward
             next_state = np.float32(next_state)
             if not ep%10 == 0 or not ram.len >= before_training*MAX_STEPS:
-                if reward == 500.:
+                if reward == 100.:
                     print('***\n-------- Maximum Reward ----------\n****')
                     for _ in range(3):
                         ram.add(state, action, reward, next_state, done)

@@ -296,10 +296,10 @@ def load_models(episode):
 #****************************
 is_training = True
 
-load_models(120)   
+# load_models(120)   
 hard_update(target_value_net, value_net)
 max_episodes  = 10001
-max_steps   = 500
+max_steps   = 1000
 rewards     = []
 batch_size  = 256
 
@@ -354,7 +354,7 @@ if __name__ == '__main__':
             rewards_current_episode += reward
             next_state = np.float32(next_state)
             if ep%2 == 0 or not len(replay_buffer) > before_training*batch_size:
-                if reward == 500.:
+                if reward == 100.:
                     print('***\n-------- Maximum Reward ----------\n****')
                     for _ in range(3):
                         replay_buffer.push(state, action, reward, next_state, done)
