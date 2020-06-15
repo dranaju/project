@@ -325,7 +325,7 @@ if __name__ == '__main__':
         done = False
         state = env.reset()
         
-        if is_training and ep%2 == 0 and len(replay_buffer) > before_training*batch_size:
+        if is_training and ep%10 == 0 and len(replay_buffer) > before_training*batch_size:
             print('Episode: ' + str(ep) + ' training')
         else:
             if len(replay_buffer) > before_training*batch_size:
@@ -338,7 +338,7 @@ if __name__ == '__main__':
         for step in range(max_steps):
             state = np.float32(state)
             # print('state___', state)
-            if is_training and ep%2 == 0 and len(replay_buffer) > before_training*batch_size:
+            if is_training and ep%10 == 0 and len(replay_buffer) > before_training*batch_size:
                 action = policy_net.get_action(state)
             else:
                 action = policy_net.get_action(state, exploitation=True)
@@ -353,7 +353,7 @@ if __name__ == '__main__':
 
             rewards_current_episode += reward
             next_state = np.float32(next_state)
-            if ep%2 == 0 or not len(replay_buffer) > before_training*batch_size:
+            if ep%10 == 0 or not len(replay_buffer) > before_training*batch_size:
                 if reward == 100.:
                     print('***\n-------- Maximum Reward ----------\n****')
                     for _ in range(3):
@@ -370,7 +370,7 @@ if __name__ == '__main__':
         
         print('reward per ep: ' + str(rewards_current_episode))
         print('reward average per ep: ' + str(rewards_current_episode) + ' and break step: ' + str(step))
-        if not ep%2 == 0:
+        if not ep%10 == 0:
             if len(replay_buffer) > before_training*batch_size:
                 result = rewards_current_episode
                 pub_result.publish(result)
