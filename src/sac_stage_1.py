@@ -361,7 +361,7 @@ if __name__ == '__main__':
                 else:
                     replay_buffer.push(state, action, reward, next_state, done)
             
-            if len(replay_buffer) > before_training*batch_size and is_training and ep% 10 == 0:
+            if len(replay_buffer) > before_training*batch_size and is_training and not ep% 10 == 0:
                 soft_q_update(batch_size)
             state = copy.deepcopy(next_state)
 
