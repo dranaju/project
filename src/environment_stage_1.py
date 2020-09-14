@@ -26,7 +26,7 @@ from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import Odometry
 from std_srvs.srv import Empty
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
-world = True
+world = False
 if world:
     from respawnGoal_custom_worlds import Respawn
 else:
