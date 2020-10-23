@@ -318,7 +318,7 @@ print('Action Max: ' + str(ACTION_V_MAX) + ' m/s and ' + str(ACTION_W_MAX) + ' r
 ram = MemoryBuffer(MAX_BUFFER)
 trainer = Trainer(STATE_DIMENSION, ACTION_DIMENSION, ACTION_V_MAX, ACTION_W_MAX, ram)
 noise = OUNoise(ACTION_DIMENSION, max_sigma=0.1, min_sigma=0.1, decay_period=8000000)
-trainer.load_models(4880)
+#trainer.load_models(4880)
 
 
 if __name__ == '__main__':
